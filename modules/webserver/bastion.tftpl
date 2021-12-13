@@ -1,0 +1,18 @@
+#!/bin/bash
+export EC2_ID=$(curl -s http://169.254.169.254/latest/meta-data/instance-id);
+export EC2_REGION=$(curl -s http://169.254.169.254/latest/dynamic/instance-identity/document | grep -i region | cut -d "\"" -f4);
+mkdir -p /home/${ssh_user}/.ssh/;
+echo "${priv_key}" |base64 -d >> /home/${ssh_user}/.ssh/id_rsa;
+echo "${pub_key}" >> /home/${ssh_user}/.ssh/id_rsa.pub;
+echo "${pub_key}" >> /home/${ssh_user}/.ssh/authorized_keys;
+chown ${ssh_user} /home/${ssh_user}/.ssh/id_rsa*;
+chgrp ${ssh_user} /home/${ssh_user}/.ssh/id_rsa*;
+chmod 600 /home/${ssh_user}/.ssh/id_rsa;
+chmod 644 /home/${ssh_user}/.ssh/authorized_keys /home/${ssh_user}/.ssh/id_rsa.pub;
+yum update -y &>> /tmp/user-data.log;
+yum install git ansible -y &>> /tmp/user-data.log;
+amazon-linux-extras install ansible2 -y &>> /tmp/user-data.log;
+aws ec2 create-tags --region $EC2_REGION --resources $EC2_ID --tags Key=Initialized,Value=false;
+git clone https://github.com/zeusal/sygris-challenge.git /tmp/sygris-challenge &>> /tmp/user-data.log;
+ansible-playbook -i /tmp/sygris-challenge/ansible/hosts /tmp/sygris-challenge/ansible/webserver.yml &>> /tmp/user-data.log;
+aws ec2 create-tags --region $EC2_REGION --resources $EC2_ID --tags Key=Initialized,Value=true

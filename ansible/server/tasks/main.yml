@@ -1,0 +1,49 @@
+---
+#- name: Install Nginx.
+#  yum: name={{ item }} state=present
+#  with_items:
+#   - nginx
+
+- name: Install Nginx.
+  become: yes
+  ignore_errors: yes
+  shell: "amazon-linux-extras install nginx1 -y"
+
+- name: Copying the index.html template to /usr/share/nginx/html
+  template: src=index.html.j2 dest=/usr/share/nginx/html/index.html
+
+- name: Change default port to 8888
+  copy:
+    src: ./files/nginx.conf
+    dest: /etc/nginx/nginx.conf 
+
+- name: Starting the nginx service.
+  service: name=nginx state=started enabled=yes
+
+- name: Disable ICMP for broadcast/multicast
+  become: yes
+  ignore_errors: yes
+  shell: "sysctl -w net.ipv4.icmp_echo_ignore_broadcasts=1 "
+
+- name: Disable Timestamp for broadcast/multicast
+  become: yes
+  ignore_errors: yes
+  shell: "sysctl -w net.ipv4.tcp_timestamps=0"
+
+- name: Disabling SWAP
+  shell: "swapoff --all"
+
+- name: Frequency of probes
+  become: yes
+  ignore_errors: yes
+  shell: "sysctl -w net.ipv4.tcp_keepalive_time=10"
+
+- name: Interval between failed probes	
+  become: yes
+  ignore_errors: yes
+  shell: "sysctl -w net.ipv4.tcp_keepalive_intvl=10"
+
+- name: Max probes or time before connection failure	
+  become: yes
+  ignore_errors: yes
+  shell: "sysctl -w net.ipv4.tcp_keepalive_probes=2"

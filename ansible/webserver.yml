@@ -1,0 +1,9 @@
+---
+# Ansible for Webserver
+# Author: Zeus Arias
+# Version: 1.0
+
+- name: Deploy Nginx server with Ansible role
+  hosts: all
+  roles:
+   - server
