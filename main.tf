@@ -39,7 +39,7 @@ resource "aws_vpc_peering_connection" "management" {
 }
 
 resource "aws_vpc_peering_connection_accepter" "operational" {
-  depends_on    = [aws_vpc_peering_connection.management]
+  depends_on                = [aws_vpc_peering_connection.management]
   vpc_peering_connection_id = aws_vpc_peering_connection.management.id
   auto_accept               = true
   tags = {
@@ -91,7 +91,7 @@ module "jumphost" {
 }
 
 module "webserver" {
-  depends_on          = [module.vpc_operational.vpc_id]
+  depends_on          = [module.vpc_operational.default_sg]
   source              = "./modules/webserver"
   vpc_id              = "${module.vpc_operational.vpc_id}"
   ami_id              = "${var.ami_id}"

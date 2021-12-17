@@ -10,7 +10,7 @@ chgrp ${ssh_user} /home/${ssh_user}/.ssh/id_rsa*;
 chmod 600 /home/${ssh_user}/.ssh/id_rsa;
 chmod 644 /home/${ssh_user}/.ssh/authorized_keys /home/${ssh_user}/.ssh/id_rsa.pub;
 yum update -y &>> /tmp/user-data.log;
-yum install git ansible -y &>> /tmp/user-data.log;
+yum install git -y &>> /tmp/user-data.log;
 amazon-linux-extras install ansible2 -y &>> /tmp/user-data.log;
 aws ec2 create-tags --region $EC2_REGION --resources $EC2_ID --tags Key=Initialized,Value=false;
 git clone https://github.com/zeusal/sygris-challenge.git /tmp/sygris-challenge &>> /tmp/user-data.log;

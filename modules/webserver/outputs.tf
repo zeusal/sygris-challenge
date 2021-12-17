@@ -1,7 +1,7 @@
 output "sg_tf_web" {
-  value = "${aws_security_group.web-sg.id}"
+  value = "${aws_security_group.web_sg.id}"
 }
 
 output "tf_web_dns" {
-  value = "${aws_lb.web-alb.dns_name}"
+  value = "${aws_lb.web_alb.dns_name}"
 }

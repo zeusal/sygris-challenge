@@ -13,7 +13,7 @@ resource "aws_vpc" "main" {
   enable_dns_hostnames = "${var.enable_dns_hostnames}"
   enable_dns_support   = "${var.enable_dns_support}"
   tags = {
-    Name = "${var.scope}-VPC"
+    Name = "${var.scope}-vpc"
   }
 }
 
@@ -112,10 +112,10 @@ resource "aws_route_table_association" "private" {
 }
 
 resource "aws_security_group" "default" {
-  name        = "${var.project}-default-SG"
+  name        = "${var.project}-default-sg"
   description = "Default SG to allow inbound/outbound from the VPC"
   vpc_id      = aws_vpc.main.id
-  depends_on  = [aws_vpc.main]
+  depends_on  = [aws_route_table_association.public]
 
   ingress {
     from_port = "0"
@@ -132,12 +132,12 @@ resource "aws_security_group" "default" {
   }
 
   tags = {
-    Name = "${var.project}-default-SG"
+    Name = "${var.project}-default-sg"
   }
 }
 
 resource "aws_security_group" "internet" {
-  name        = "${var.project}-internet-SG"
+  name        = "${var.project}-internet-sg"
   description = "Default SG to allow internet outbound from the VPC"
   vpc_id      = aws_vpc.main.id
   depends_on  = [aws_vpc.main]
@@ -151,12 +151,12 @@ resource "aws_security_group" "internet" {
   }
 
   tags = {
-    Name = "${var.project}-internet-SG"
+    Name = "${var.project}-internet-sg"
   }
 }
 
 resource "aws_security_group" "ssh" {
-  name               = "${var.project}-ssh-SG"
+  name               = "${var.project}-ssh-sg"
   description        = "Allow SSH inbound traffic"
   vpc_id             = aws_vpc.main.id
   depends_on  = [aws_vpc.main]
@@ -179,6 +179,6 @@ resource "aws_security_group" "ssh" {
   }
 
   tags = {
-    Name = "${var.project}-ssh-SG"
+    Name = "${var.project}-ssh-sg"
   }
 }

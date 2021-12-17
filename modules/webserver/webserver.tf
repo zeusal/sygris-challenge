@@ -27,14 +27,14 @@ resource "aws_iam_role" "role" {
 })
 
   tags = {
-    Name = "web-role"
+    Name = "${var.project}-web-role"
   }
 }
 
-resource "aws_launch_configuration" "lc-web" {
+resource "aws_launch_configuration" "lc_web" {
   instance_type        = "${var.instance_type}"
   image_id             = "${var.ami_id}"
-  security_groups      = ["${aws_security_group.web-sg.id}", "${var.default_sg}", "${var.internet_sg}", "${var.ssh_sg}"]
+  security_groups      = ["${aws_security_group.web_sg.id}", "${var.default_sg}", "${var.internet_sg}", "${var.ssh_sg}"]
   key_name             =  aws_key_pair.webserver.id
   user_data            = templatefile("${path.module}/bastion.tftpl", { priv_key = var.priv_key, pub_key = var.pub_key, ssh_user = var.ssh_user })
   iam_instance_profile = aws_iam_instance_profile.webserver.id
@@ -44,13 +44,14 @@ resource "aws_launch_configuration" "lc-web" {
   }
 }
 
-resource "aws_autoscaling_group" "asg-web" {
-  name                 = "asg-web"
-  launch_configuration = "${aws_launch_configuration.lc-web.name}"
+resource "aws_autoscaling_group" "asg_web" {
+  depends_on           = [aws_launch_configuration.lc_web]
+  name                 = "${var.project}-asg-web"
+  launch_configuration = "${aws_launch_configuration.lc_web.name}"
   min_size             = "${var.asg_min}"
   max_size             = "${var.asg_max}"
   desired_capacity     = "${var.asg_desired}"
-  target_group_arns    = ["${aws_lb_target_group.tg-web.arn}"]
+  target_group_arns    = ["${aws_lb_target_group.tg_web.arn}"]
   vpc_zone_identifier  = "${var.private_subnets_ids}"
 
   lifecycle {
@@ -71,7 +72,7 @@ resource "aws_autoscaling_group" "asg-web" {
   ]
 }
 
-resource "aws_security_group" "alb-sg" {
+resource "aws_security_group" "alb_sg" {
   name        = "${var.project}-alb-SG"
   description = "Security Group for Web Server"
   vpc_id      = "${var.vpc_id}"
@@ -109,8 +110,8 @@ resource "aws_security_group" "alb-sg" {
   }
 }
 
-resource "aws_security_group" "web-sg" {
-  depends_on  = [aws_security_group.alb-sg]
+resource "aws_security_group" "web_sg" {
+  depends_on  = [aws_security_group.alb_sg]
   name        = "${var.project}-web-SG"
   description = "Security Group for Web Server"
   vpc_id      = "${var.vpc_id}"
@@ -119,14 +120,14 @@ resource "aws_security_group" "web-sg" {
     from_port        = "8888"
     to_port          = "8888"
     protocol         = "tcp"
-    security_groups  = [aws_security_group.alb-sg.id]
+    security_groups  = [aws_security_group.alb_sg.id]
   }
 
   egress {
     from_port        = 0
     to_port          = 0
     protocol         = "-1"
-    security_groups  = [aws_security_group.alb-sg.id]
+    security_groups  = [aws_security_group.alb_sg.id]
   }
 
   tags = {
@@ -134,7 +135,7 @@ resource "aws_security_group" "web-sg" {
   }
 }
 
-resource "aws_lb_target_group" "tg-web" {
+resource "aws_lb_target_group" "tg_web" {
   name     = "tg-web-8888"
   port     = 8888
   protocol = "HTTP"
@@ -151,10 +152,10 @@ resource "aws_lb_target_group" "tg-web" {
   }
 }
 
-resource "aws_lb" "web-alb" {
+resource "aws_lb" "web_alb" {
   name            = "${var.project}-web-alb"
   internal        = false
-  security_groups = ["${aws_security_group.alb-sg.id}"]
+  security_groups = ["${aws_security_group.alb_sg.id}"]
   subnets         = "${var.public_subnets_ids}"
 
   tags = {
@@ -162,44 +163,45 @@ resource "aws_lb" "web-alb" {
   }
 }
 
-resource "aws_lb_listener" "front_end" {
-  load_balancer_arn = "${aws_lb.web-alb.arn}"
+resource "aws_lb_listener" "front_end_80" {
+  load_balancer_arn = "${aws_lb.web_alb.arn}"
   port              = 80
   protocol          = "HTTP"
 
   default_action {
-  target_group_arn = "${aws_lb_target_group.tg-web.arn}"
+  target_group_arn = "${aws_lb_target_group.tg_web.arn}"
   type             = "forward"
   }
 }
 
-resource "aws_acm_certificate" "custom-cert" {
+resource "aws_acm_certificate" "custom_cert" {
   private_key = base64decode("${var.hosted_zone_key}")
   certificate_body = base64decode("${var.hosted_zone_cert}")
 }
 
 resource "aws_lb_listener" "front_end_443" {
-  depends_on  = [aws_acm_certificate.custom-cert]
-  load_balancer_arn = "${aws_lb.web-alb.arn}"
+  depends_on  = [aws_acm_certificate.custom_cert]
+  load_balancer_arn = "${aws_lb.web_alb.arn}"
   port              = 443
   protocol          = "HTTPS"
   ssl_policy        = "ELBSecurityPolicy-2016-08"
-  certificate_arn   = aws_acm_certificate.custom-cert.arn
+  certificate_arn   = aws_acm_certificate.custom_cert.arn
 
   default_action {
-  target_group_arn = "${aws_lb_target_group.tg-web.arn}"
+  target_group_arn = "${aws_lb_target_group.tg_web.arn}"
   type             = "forward"
   }
 }
 
 resource "aws_route53_record" "www" {
-  zone_id = "${var.hosted_zone_id}"
-  name    = "${var.hosted_zone}"
-  type    = "A"
+  depends_on = [aws_lb.web_alb]
+  zone_id    = "${var.hosted_zone_id}"
+  name       = "${var.hosted_zone}"
+  type       = "A"
 
   alias {
-    name                   = aws_lb.web-alb.dns_name
-    zone_id                = aws_lb.web-alb.zone_id
+    name                   = aws_lb.web_alb.dns_name
+    zone_id                = aws_lb.web_alb.zone_id
     evaluate_target_health = true
   }
 }
